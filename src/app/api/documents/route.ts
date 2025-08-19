@@ -32,8 +32,16 @@ export async function GET(
       | "url"
       | null;
 
+    console.log(
+      `User ID: ${userId}, Limit: ${limit}, Offset: ${offset}, Content Type: ${contentType}`
+    );
+
     // Get vector store with user filtering
     const vectorStore = await getVectorStore(userId);
+
+    console.log(
+      `Listing documents for user ${userId} with limit ${limit} and offset ${offset}`
+    );
 
     // Build filter for search
     const filter: any = {
@@ -59,6 +67,8 @@ export async function GET(
       limit + offset, // Get more than needed for pagination
       filter
     );
+
+    console.log(`Found ${searchResults.length} documents for user ${userId}`);
 
     // Group chunks by documentId to get unique documents
     const documentMap = new Map<string, DocumentListItem>();

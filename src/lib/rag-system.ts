@@ -1,14 +1,14 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { getVectorStore } from "./qdrant";
+import type { Document } from "@langchain/core/documents";
 
-// Initialize OpenAI Chat Model
+// Models
 const chatModel = new ChatOpenAI({
   model: "gpt-4",
   temperature: 0.7,
   openAIApiKey: process.env.OPENAI_API_KEY!,
 });
 
-// Streaming chat model
 const streamingChatModel = new ChatOpenAI({
   model: "gpt-4",
   temperature: 0.7,
@@ -25,6 +25,7 @@ export interface RAGQuery {
   includeMetadata?: boolean;
   maxResults?: number;
   scoreThreshold?: number;
+  filter?: Record<string, any>; // 👈 add filter support
 }
 
 /**
@@ -35,46 +36,41 @@ export interface RAGResponse {
   sources: Array<{
     content: string;
     metadata: Record<string, unknown>;
-    score?: number;
   }>;
   query: string;
   timestamp: string;
 }
 
 /**
- * Simple RAG query - returns formatted response
+ * Normal RAG query with optional metadata filter
  */
 export async function executeRAGQuery({
   question,
   userId,
   includeMetadata = true,
   maxResults = 5,
-  scoreThreshold = 0.7,
+  scoreThreshold = 0.1,
 }: RAGQuery): Promise<RAGResponse> {
   try {
-    // Get vector store
     const vectorStore = await getVectorStore(userId);
 
-    // Get relevant documents
-    const relevantDocs = await vectorStore.similaritySearchWithScore(
-      question,
-      maxResults * 2, // Get more for filtering
-      {
-        must: [
-          {
-            key: "metadata.userId",
-            match: { value: userId },
-          },
-        ],
-      }
-    );
+    const filter = {
+      must: [
+        {
+          key: "metadata.userId",
+          match: { value: userId },
+        },
+      ],
+    };
 
-    // Filter by score threshold
-    const filteredDocs = relevantDocs
-      .filter(([, score]) => score >= scoreThreshold)
-      .slice(0, maxResults);
+    const retriever = vectorStore.asRetriever({
+      k: maxResults,
+      filter: filter, // 👈 pass filter to retriever
+    });
 
-    if (filteredDocs.length === 0) {
+    const relevantDocs: Document[] = await retriever.invoke(question);
+
+    if (relevantDocs.length === 0) {
       return {
         answer:
           "I don't have any relevant information in your uploaded documents to answer this question.",
@@ -84,32 +80,34 @@ export async function executeRAGQuery({
       };
     }
 
-    // Format context
-    const context = filteredDocs.map(([doc]) => doc.pageContent).join("\n\n");
+    const context = relevantDocs
+      .map(
+        (doc) =>
+          `Content: ${doc.pageContent}\nMetadata: ${JSON.stringify(
+            doc.metadata
+          )}`
+      )
+      .join("\n\n");
 
-    // Simple prompt
-    const prompt = `Use this context to answer the question. If you don't know, say so.
+    const SYSTEM_PROMPT = `
+      You are an AI assistant that answers user questions strictly based on the provided context. 
+      If the context does not contain the answer, say "I don’t know."
 
-Context:
-${context}
+      Context:
+      ${context}
 
-Question: ${question}
+      Question: ${question}
+          `;
 
-Answer:`;
+    const response = await chatModel.invoke(SYSTEM_PROMPT);
 
-    // Get response from OpenAI
-    const response = await chatModel.invoke(prompt);
-    const answer = response.content as string;
-
-    // Format sources
-    const sources = filteredDocs.map(([doc, score]) => ({
-      content: doc.pageContent.substring(0, 200) + "...",
+    const sources = relevantDocs.map((doc) => ({
+      content: doc.pageContent.slice(0, 200) + "...",
       metadata: includeMetadata ? doc.metadata : {},
-      score: Math.round(score * 1000) / 1000,
     }));
 
     return {
-      answer,
+      answer: response.content as string,
       sources,
       query: question,
       timestamp: new Date().toISOString(),
@@ -125,45 +123,36 @@ Answer:`;
 }
 
 /**
- * Streaming RAG query - yields chunks
+ * Streaming RAG query with filter support
  */
 export async function* executeRAGQueryStream({
   question,
   userId,
   maxResults = 5,
+  filter,
 }: Omit<RAGQuery, "includeMetadata" | "scoreThreshold">): AsyncGenerator<
   string,
   void,
   unknown
 > {
   try {
-    // Get vector store
     const vectorStore = await getVectorStore(userId);
+    const retriever = vectorStore.asRetriever({
+      k: maxResults,
+      filter: filter || undefined, // 👈 pass filter here too
+    });
 
-    // Get relevant documents
-    const relevantDocs = await vectorStore.similaritySearchWithScore(
-      question,
-      maxResults,
-      {
-        must: [
-          {
-            key: "metadata.userId",
-            match: { value: userId },
-          },
-        ],
-      }
-    );
+    const relevantDocs: Document[] = await retriever.invoke(question);
 
     if (relevantDocs.length === 0) {
       yield "I don't have any relevant information in your uploaded documents to answer this question.";
       return;
     }
 
-    // Format context
-    const context = relevantDocs.map(([doc]) => doc.pageContent).join("\n\n");
+    const context = relevantDocs.map((doc) => doc.pageContent).join("\n\n");
 
-    // Simple prompt
-    const prompt = `Use this context to answer the question. If you don't know, say so.
+    const prompt = `Answer the question using the context below. 
+If you don’t know the answer from context, say "I don’t know."
 
 Context:
 ${context}
@@ -172,7 +161,6 @@ Question: ${question}
 
 Answer:`;
 
-    // Stream response
     const stream = await streamingChatModel.stream(prompt);
 
     for await (const chunk of stream) {
