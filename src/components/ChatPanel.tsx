@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { RAGQueryRequest, RAGQueryResponse } from '@/types';
-import SettingsModal, { getUserApiKey, getUserModel } from './SettingsModal';
+import SettingsModal, { getUserSettings, type UserSettings } from './SettingsModal';
 
 interface Message {
   id: string;
@@ -124,17 +124,14 @@ export default function ChatPanel() {
       return;
     }
 
-    // Check if user has provided an API key
-    const userApiKey = getUserApiKey(user.id);
-    if (!userApiKey) {
+    // Get user settings
+    const userSettings = getUserSettings(user.id);
+    if (!userSettings.apiKey) {
       setError('Please add your OpenAI API key in settings first');
       setTimeout(() => setError(null), 5000);
       setIsSettingsOpen(true);
       return;
     }
-
-    // Get user's selected model
-    const userModel = getUserModel(user.id);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -151,10 +148,10 @@ export default function ChatPanel() {
     try {
       const requestBody: RAGQueryRequest = {
         question: input.trim(),
-        apiKey: userApiKey,
-        model: userModel,
+        apiKey: userSettings.apiKey,
+        model: userSettings.model,
         includeMetadata: true,
-        maxResults: 5,
+        maxResults: 3,
         scoreThreshold: 0.7,
       };
 

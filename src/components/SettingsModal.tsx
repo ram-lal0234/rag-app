@@ -8,6 +8,12 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
+// User settings interface
+interface UserSettings {
+  apiKey: string;
+  model: string;
+}
+
 // Available OpenAI models
 const OPENAI_MODELS = [
   { value: 'gpt-4o', label: 'GPT-4o', description: 'Most capable model' },
@@ -17,63 +23,46 @@ const OPENAI_MODELS = [
   { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', description: 'Fast and affordable' },
 ];
 
-// Local storage helpers
-const getApiKeyStorageKey = (userId: string) => `openai-api-key-${userId}`;
-const getModelStorageKey = (userId: string) => `openai-model-${userId}`;
+// Local storage helpers - unified approach
+const getSettingsStorageKey = (userId: string) => `user-settings-${userId}`;
 
-const saveApiKeyToStorage = (userId: string, apiKey: string) => {
+const saveSettingsToStorage = (userId: string, settings: UserSettings) => {
   try {
-    const key = getApiKeyStorageKey(userId);
-    localStorage.setItem(key, apiKey);
+    const key = getSettingsStorageKey(userId);
+    localStorage.setItem(key, JSON.stringify(settings));
   } catch (error) {
-    console.warn('Failed to save API key to localStorage:', error);
+    console.warn('Failed to save settings to localStorage:', error);
   }
 };
 
-const saveModelToStorage = (userId: string, model: string) => {
+const loadSettingsFromStorage = (userId: string): UserSettings => {
   try {
-    const key = getModelStorageKey(userId);
-    localStorage.setItem(key, model);
+    const key = getSettingsStorageKey(userId);
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return {
+        apiKey: parsed.apiKey || '',
+        model: parsed.model || 'gpt-4o-mini'
+      };
+    }
   } catch (error) {
-    console.warn('Failed to save model to localStorage:', error);
+    console.warn('Failed to load settings from localStorage:', error);
   }
+  
+  // Return default settings
+  return {
+    apiKey: '',
+    model: 'gpt-4o-mini'
+  };
 };
 
-const loadApiKeyFromStorage = (userId: string): string => {
+const removeSettingsFromStorage = (userId: string) => {
   try {
-    const key = getApiKeyStorageKey(userId);
-    return localStorage.getItem(key) || '';
-  } catch (error) {
-    console.warn('Failed to load API key from localStorage:', error);
-    return '';
-  }
-};
-
-const loadModelFromStorage = (userId: string): string => {
-  try {
-    const key = getModelStorageKey(userId);
-    return localStorage.getItem(key) || 'gpt-4o-mini'; // Default model
-  } catch (error) {
-    console.warn('Failed to load model from localStorage:', error);
-    return 'gpt-4o-mini';
-  }
-};
-
-const removeApiKeyFromStorage = (userId: string) => {
-  try {
-    const key = getApiKeyStorageKey(userId);
+    const key = getSettingsStorageKey(userId);
     localStorage.removeItem(key);
   } catch (error) {
-    console.warn('Failed to remove API key from localStorage:', error);
-  }
-};
-
-const removeModelFromStorage = (userId: string) => {
-  try {
-    const key = getModelStorageKey(userId);
-    localStorage.removeItem(key);
-  } catch (error) {
-    console.warn('Failed to remove model from localStorage:', error);
+    console.warn('Failed to remove settings from localStorage:', error);
   }
 };
 
@@ -88,10 +77,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   // Load settings when modal opens or user changes
   useEffect(() => {
     if (isOpen && user?.id) {
-      const storedApiKey = loadApiKeyFromStorage(user.id);
-      const storedModel = loadModelFromStorage(user.id);
-      setApiKey(storedApiKey);
-      setSelectedModel(storedModel);
+      const settings = loadSettingsFromStorage(user.id);
+      setApiKey(settings.apiKey);
+      setSelectedModel(settings.model);
     }
   }, [isOpen, user?.id]);
 
@@ -124,8 +112,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
     setIsSaving(true);
     try {
-      saveApiKeyToStorage(user.id, apiKey.trim());
-      saveModelToStorage(user.id, selectedModel);
+      const settings: UserSettings = {
+        apiKey: apiKey.trim(),
+        model: selectedModel
+      };
+      saveSettingsToStorage(user.id, settings);
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to save settings' });
@@ -141,8 +132,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (!confirmRemove) return;
 
     try {
-      removeApiKeyFromStorage(user.id);
-      removeModelFromStorage(user.id);
+      removeSettingsFromStorage(user.id);
       setApiKey('');
       setSelectedModel('gpt-4o-mini');
       setMessage({ type: 'success', text: 'Settings removed successfully!' });
@@ -241,8 +231,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               {OPENAI_MODELS.find(m => m.value === selectedModel)?.description}
             </p>
             <div className="mt-2 text-xs text-gray-500">
-              <p><strong>Performance:</strong> GPT-4o {'>'} GPT-4 Turbo {'>'} GPT-4 {'>'} GPT-4o Mini {'>'} GPT-3.5 Turbo</p>
-              <p><strong>Cost:</strong> GPT-3.5 Turbo {'<'} GPT-4o Mini {'<'} GPT-4o {'<'} GPT-4 {'<'} GPT-4 Turbo</p>
+              <p><strong>Performance:</strong> GPT-4o &gt; GPT-4 Turbo &gt; GPT-4 &gt; GPT-4o Mini &gt; GPT-3.5 Turbo</p>
+              <p><strong>Cost:</strong> GPT-3.5 Turbo &lt; GPT-4o Mini &lt; GPT-4o &lt; GPT-4 &lt; GPT-4 Turbo</p>
             </div>
           </div>
 
@@ -281,11 +271,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   );
 }
 
-// Export helper functions for other components
+// Export unified helper functions for other components
+export const getUserSettings = (userId: string): UserSettings => {
+  return loadSettingsFromStorage(userId);
+};
+
+// Backward compatibility functions
 export const getUserApiKey = (userId: string): string => {
-  return loadApiKeyFromStorage(userId);
+  return getUserSettings(userId).apiKey;
 };
 
 export const getUserModel = (userId: string): string => {
-  return loadModelFromStorage(userId);
-}; 
+  return getUserSettings(userId).model;
+};
+
+// Export the UserSettings type for other components
+export type { UserSettings }; 

@@ -70,6 +70,7 @@ export interface CreateNoteRequest {
   content: string;
   title?: string;
   tags?: string[];
+  apiKey: string; // User's OpenAI API key (required)
 }
 
 // Website processing options
@@ -86,12 +87,13 @@ export interface ProcessUrlRequest {
   title?: string;
   tags?: string[];
   crawlOptions?: WebsiteProcessingOptions;
+  apiKey: string; // User's OpenAI API key (required)
 }
 
 // RAG query request
 export interface RAGQueryRequest {
   question: string;
-  apiKey?: string; // User's OpenAI API key
+  apiKey: string; // User's OpenAI API key (required)
   model?: string; // OpenAI model to use
   includeMetadata?: boolean;
   maxResults?: number;

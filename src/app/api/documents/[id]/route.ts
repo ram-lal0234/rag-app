@@ -77,12 +77,9 @@ export async function GET(
     }
 
     // Import here to avoid circular imports
-    const { getVectorStore } = await import("@/lib/qdrant");
+    const { qdrantClient, COLLECTION_NAME } = await import("@/lib/qdrant");
 
-    // Get vector store with user filtering
-    const vectorStore = await getVectorStore(userId);
-
-    // Search for document chunks
+    // Search for document chunks using Qdrant client directly
     const filter = {
       must: [
         {
@@ -96,11 +93,18 @@ export async function GET(
       ],
     };
 
-    const searchResults = await vectorStore.similaritySearch(
-      "", // Empty query to get all chunks
-      100, // Get up to 100 chunks
-      filter
-    );
+    const scrollResult = await qdrantClient.scroll(COLLECTION_NAME, {
+      filter: filter,
+      limit: 100, // Get up to 100 chunks
+      with_payload: true,
+      with_vector: false, // We don't need vectors for document details
+    });
+
+    // Convert Qdrant points to the expected format
+    const searchResults = scrollResult.points.map(point => ({
+      metadata: point.payload?.metadata || point.payload,
+      pageContent: point.payload?.pageContent || '',
+    }));
 
     if (searchResults.length === 0) {
       return NextResponse.json(
@@ -111,22 +115,22 @@ export async function GET(
 
     // Extract document metadata from the first chunk
     const firstChunk = searchResults[0];
-    const metadata = firstChunk.metadata;
+    const metadata = firstChunk.metadata || {};
 
     const documentDetails = {
       id: documentId,
-      title: metadata.title || "Untitled Document",
-      contentType: metadata.contentType || "document",
+      title: (metadata as any).title || "Untitled Document",
+      contentType: (metadata as any).contentType || "document",
       metadata: {
-        fileName: metadata.fileName,
-        fileType: metadata.fileType,
-        url: metadata.url,
-        createdAt: metadata.createdAt || new Date().toISOString(),
-        updatedAt: metadata.updatedAt || new Date().toISOString(),
-        tags: metadata.tags,
+        fileName: (metadata as any).fileName,
+        fileType: (metadata as any).fileType,
+        url: (metadata as any).url,
+        createdAt: (metadata as any).createdAt || new Date().toISOString(),
+        updatedAt: (metadata as any).updatedAt || new Date().toISOString(),
+        tags: (metadata as any).tags,
       },
       chunksCount: searchResults.length,
-      url: metadata.url,
+      url: (metadata as any).url,
       chunks: searchResults.map((chunk) => ({
         content: chunk.pageContent,
         metadata: chunk.metadata,

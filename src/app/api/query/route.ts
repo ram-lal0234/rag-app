@@ -85,23 +85,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Import here to avoid circular imports
-    const { getVectorStore } = await import('@/lib/qdrant');
+    const { qdrantClient, COLLECTION_NAME } = await import('@/lib/qdrant');
     
-    // Try to get vector store and check if user has documents
+    // Try to check if user has documents without requiring embeddings
     try {
-      const vectorStore = await getVectorStore(userId);
-      const testQuery = await vectorStore.similaritySearch("test", 1, {
-        must: [
-          {
-            key: "metadata.userId",
-            match: { value: userId }
-          }
-        ]
+      const scrollResult = await qdrantClient.scroll(COLLECTION_NAME, {
+        filter: {
+          must: [
+            {
+              key: "metadata.userId",
+              match: { value: userId }
+            }
+          ]
+        },
+        limit: 1,
+        with_payload: false,
+        with_vector: false
       });
 
       return NextResponse.json({
-        hasDocuments: testQuery.length > 0,
-        documentCount: testQuery.length
+        hasDocuments: scrollResult.points.length > 0,
+        documentCount: scrollResult.points.length
       });
     } catch (error) {
       // If vector store fails, assume no documents

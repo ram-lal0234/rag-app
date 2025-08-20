@@ -7,6 +7,7 @@ import {
   CreateNoteRequest,
   ProcessUrlRequest,
 } from "@/types";
+import { getUserSettings, type UserSettings } from "./SettingsModal";
 
 interface DataIngestionPanelProps {
   onDocumentAdded?: () => void; // Callback to refresh document list
@@ -39,6 +40,14 @@ export default function DataIngestionPanel({
       return;
     }
 
+    // Check if user has API key
+    const userSettings = getUserSettings(user.id);
+    if (!userSettings.apiKey) {
+      setError("Please add your OpenAI API key in settings first");
+      clearNotifications();
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setSuccess(null);
@@ -47,6 +56,7 @@ export default function DataIngestionPanel({
       const requestBody: CreateNoteRequest = {
         content: textInput.trim(),
         title: textInput.trim().split("\n")[0].substring(0, 50) || "Quick Note", // Use first line as title
+        apiKey: userSettings.apiKey,
       };
 
       const response = await fetch("/api/documents/note", {
@@ -90,6 +100,17 @@ export default function DataIngestionPanel({
       return;
     }
 
+    // Check if user has API key
+    const userSettings = getUserSettings(user.id);
+    if (!userSettings.apiKey) {
+      setError("Please add your OpenAI API key in settings first");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      clearNotifications();
+      return;
+    }
+
     const file = e.target.files[0];
 
     // Validate file type
@@ -116,6 +137,7 @@ export default function DataIngestionPanel({
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("apiKey", userSettings.apiKey);
 
       const response = await fetch("/api/documents/upload", {
         method: "POST",
@@ -161,6 +183,14 @@ export default function DataIngestionPanel({
       return;
     }
 
+    // Check if user has API key
+    const userSettings = getUserSettings(user.id);
+    if (!userSettings.apiKey) {
+      setError("Please add your OpenAI API key in settings first");
+      clearNotifications();
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setSuccess(null);
@@ -168,6 +198,7 @@ export default function DataIngestionPanel({
     try {
       const requestBody: ProcessUrlRequest = {
         url: urlInput.trim(),
+        apiKey: userSettings.apiKey,
       };
 
       const response = await fetch("/api/documents/url", {

@@ -20,7 +20,7 @@ export async function POST(
     }
 
     const body: CreateNoteRequest = await request.json();
-    const { content, title, tags } = body;
+    const { content, title, tags, apiKey } = body;
 
     if (!content || typeof content !== "string") {
       return NextResponse.json(
@@ -32,6 +32,13 @@ export async function POST(
     if (content.trim().length === 0) {
       return NextResponse.json(
         { error: "Content cannot be empty" },
+        { status: 400 }
+      );
+    }
+
+    if (!apiKey || typeof apiKey !== "string") {
+      return NextResponse.json(
+        { error: "OpenAI API key is required" },
         { status: 400 }
       );
     }
@@ -53,8 +60,8 @@ export async function POST(
       );
     }
 
-    // Store document chunks in Qdrant vector database
-    await createVectorStoreFromDocuments(processedDocument.chunks, userId);
+    // Store document chunks in Qdrant vector database with user's API key
+    await createVectorStoreFromDocuments(processedDocument.chunks, userId, apiKey);
 
     // Return success response matching DocumentResponse interface
     const response: DocumentResponse = {

@@ -12,11 +12,16 @@ export const qdrantClient = new QdrantClient({
   apiKey: process.env.QDRANT_API_KEY,
 });
 
-// Initialize embeddings
-export const embeddings = new OpenAIEmbeddings({
-  model: "text-embedding-3-small",
-  openAIApiKey: process.env.OPENAI_API_KEY!,
-});
+// Create embeddings with user's API key
+export const createEmbeddings = (apiKey?: string) => {
+  if (!apiKey) {
+    throw new Error("OpenAI API key is required for embeddings");
+  }
+  return new OpenAIEmbeddings({
+    model: "text-embedding-3-small",
+    openAIApiKey: apiKey,
+  });
+};
 
 // Initialize collection if it doesn't exist
 export async function initializeCollection() {
@@ -86,10 +91,16 @@ export async function initializeCollection() {
 }
 
 // Get vector store instance with user filtering
-export async function getVectorStore(userId?: string) {
+export async function getVectorStore(userId?: string, apiKey?: string) {
   await initializeCollection();
 
-  return new QdrantVectorStore(embeddings, {
+  // Use user's API key for embeddings - required for operations
+  if (!apiKey) {
+    throw new Error("OpenAI API key is required for vector store operations");
+  }
+  const userEmbeddings = createEmbeddings(apiKey);
+
+  return new QdrantVectorStore(userEmbeddings, {
     client: qdrantClient,
     collectionName: COLLECTION_NAME,
     url: process.env.QDRANT_URL!,
@@ -110,7 +121,8 @@ export async function getVectorStore(userId?: string) {
 // Create vector store from documents with user metadata
 export async function createVectorStoreFromDocuments(
   documents: any[],
-  userId: string
+  userId: string,
+  apiKey: string
 ) {
   await initializeCollection();
 
@@ -125,9 +137,15 @@ export async function createVectorStoreFromDocuments(
     },
   }));
 
+  // Use user's API key for embeddings - required
+  if (!apiKey) {
+    throw new Error("OpenAI API key is required for document processing");
+  }
+  const userEmbeddings = createEmbeddings(apiKey);
+
   return await QdrantVectorStore.fromDocuments(
     documentsWithUserId,
-    embeddings,
+    userEmbeddings,
     {
       client: qdrantClient,
       collectionName: COLLECTION_NAME,

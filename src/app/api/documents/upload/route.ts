@@ -33,6 +33,7 @@ export async function POST(
     const file = formData.get("file") as File;
     const title = formData.get("title") as string;
     const tagsString = formData.get("tags") as string;
+    const apiKey = formData.get("apiKey") as string;
 
     // Parse tags if provided
     const tags = tagsString
@@ -44,6 +45,13 @@ export async function POST(
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    if (!apiKey || typeof apiKey !== "string") {
+      return NextResponse.json(
+        { error: "OpenAI API key is required" },
+        { status: 400 }
+      );
     }
 
     // Validate file type
@@ -91,8 +99,8 @@ export async function POST(
       );
     }
 
-    // Store document chunks in Qdrant vector database
-    await createVectorStoreFromDocuments(processedDocument.chunks, userId);
+    // Store document chunks in Qdrant vector database with user's API key
+    await createVectorStoreFromDocuments(processedDocument.chunks, userId, apiKey);
 
     // Return success response matching DocumentResponse interface
     const response: DocumentResponse = {
