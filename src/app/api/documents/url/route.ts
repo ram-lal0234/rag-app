@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { processWebsiteURL, validateAndCleanURL } from "@/lib/websiteloader";
+import { 
+  processWebsiteURL, 
+  validateAndCleanURL 
+} from "@/lib/websiteloader";
 import { createVectorStoreFromDocuments } from "@/lib/qdrant";
 import {
   DocumentResponse,
   APIErrorResponse,
   ProcessUrlRequest,
+  WebsiteProcessingOptions,
   type DocumentChunk,
 } from "@/types";
 
@@ -19,8 +23,10 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body: ProcessUrlRequest = await request.json();
-    const { url, title, tags } = body;
+    const body: ProcessUrlRequest & {
+      crawlOptions?: WebsiteProcessingOptions;
+    } = await request.json();
+    const { url, title, tags, crawlOptions } = body;
 
     if (!url || typeof url !== "string") {
       return NextResponse.json(
@@ -47,8 +53,9 @@ export async function POST(
       );
     }
 
-    // Process the website URL using LangChain CheerioWebBaseLoader
-    const processedDocument = await processWebsiteURL(cleanedUrl, title);
+    // Process the website URL using LangChain RecursiveUrlLoader with URL-based indexing
+    console.log(`Processing URL: ${cleanedUrl} with options:`, crawlOptions);
+    const processedDocument = await processWebsiteURL(cleanedUrl, title, crawlOptions);
 
     // Add tags to metadata if provided
     if (tags && tags.length > 0) {

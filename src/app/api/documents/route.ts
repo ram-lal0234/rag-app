@@ -61,12 +61,47 @@ export async function GET(
       });
     }
 
+    console.log("Using filter:", JSON.stringify(filter, null, 2));
+
     // Search for documents (we'll use a broad search to get all user documents)
-    const searchResults = await vectorStore.similaritySearch(
-      "", // Empty query to get all documents
-      limit + offset, // Get more than needed for pagination
-      filter
-    );
+    let searchResults: any[] = [];
+    try {
+      // First try with filter
+      searchResults = await vectorStore.similaritySearch(
+        "", // Empty query to get all documents
+        limit + offset, // Get more than needed for pagination
+        filter
+      );
+      console.log(`Found ${searchResults.length} documents with filter`);
+    } catch (searchError) {
+      console.error("Similarity search error:", searchError);
+      console.error("Error details:", JSON.stringify(searchError, null, 2));
+      
+      // If the error is about missing index, try without filter first
+      if (searchError instanceof Error && searchError.message?.includes("Index required but not found")) {
+        console.log("Trying search without filter due to missing index...");
+        try {
+          searchResults = await vectorStore.similaritySearch(
+            "", // Empty query to get all documents
+            limit + offset, // Get more than needed for pagination
+          );
+          
+          // Filter results manually in memory
+          searchResults = searchResults.filter((doc: any) => 
+            doc.metadata?.userId === userId
+          );
+          
+          console.log(`Found ${searchResults.length} documents after manual filtering`);
+        } catch (fallbackError) {
+          console.error("Fallback search also failed:", fallbackError);
+          // Return empty results instead of throwing error
+          searchResults = [];
+        }
+      } else {
+        // Return empty results instead of throwing error
+        searchResults = [];
+      }
+    }
 
     console.log(`Found ${searchResults.length} documents for user ${userId}`);
 

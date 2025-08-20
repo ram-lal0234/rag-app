@@ -7,6 +7,7 @@ import {
   SUPPORTED_FILE_TYPES,
   type SupportedFileType,
   type DocumentChunk,
+  type DocumentMetadata,
 } from "@/types";
 
 // Text splitter configuration following README requirements
@@ -20,14 +21,7 @@ export interface ProcessedDocument {
   title: string;
   contentType: "note" | "document" | "url";
   chunks: DocumentChunk[];
-  metadata: {
-    fileName?: string;
-    fileType?: string;
-    url?: string;
-    createdAt: string;
-    updatedAt: string;
-    tags?: string[];
-  };
+  metadata: DocumentMetadata;
 }
 
 export async function processPDFFile(

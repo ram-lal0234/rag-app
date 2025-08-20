@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { 
       question, 
+      apiKey,
+      model,
       includeMetadata = true,
       maxResults = 5,
       scoreThreshold = 0.7,
@@ -32,10 +34,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Execute RAG query
+    if (!apiKey || typeof apiKey !== 'string') {
+      return NextResponse.json(
+        { error: 'OpenAI API key is required' },
+        { status: 400 }
+      );
+    }
+
+    // Execute RAG query with user's API key and model
     const response = await executeRAGQuery({
       question,
       userId,
+      apiKey,
+      model,
       includeMetadata,
       maxResults,
       scoreThreshold,

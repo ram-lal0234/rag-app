@@ -76,13 +76,6 @@ export default function StoredDataPanel({
           />
         </svg>
         <h2 className="text-lg md:text-xl font-semibold">Stored Data</h2>
-        {selectedDocument && (
-          <div className="flex-1 text-right">
-            <span className="text-xs text-blue-400">
-              Selected: {selectedDocument.title}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Document List */}

@@ -29,6 +29,12 @@ export interface DocumentMetadata {
   createdAt: string;
   updatedAt: string;
   tags?: string[];
+  // Website-specific metadata
+  hostname?: string;
+  totalPages?: number;
+  totalChunks?: number;
+  crawlDepth?: number;
+  crawledUrls?: string[];
 }
 
 // Processed document interface
@@ -66,16 +72,27 @@ export interface CreateNoteRequest {
   tags?: string[];
 }
 
+// Website processing options
+export interface WebsiteProcessingOptions {
+  maxDepth?: number;
+  excludeDirs?: string[];
+  maxPages?: number;
+  sameDomainOnly?: boolean;
+}
+
 // URL processing request
 export interface ProcessUrlRequest {
   url: string;
   title?: string;
   tags?: string[];
+  crawlOptions?: WebsiteProcessingOptions;
 }
 
 // RAG query request
 export interface RAGQueryRequest {
   question: string;
+  apiKey?: string; // User's OpenAI API key
+  model?: string; // OpenAI model to use
   includeMetadata?: boolean;
   maxResults?: number;
   scoreThreshold?: number;

@@ -2,18 +2,18 @@ import { ChatOpenAI } from "@langchain/openai";
 import { getVectorStore } from "./qdrant";
 import type { Document } from "@langchain/core/documents";
 
-// Models
-const chatModel = new ChatOpenAI({
-  model: "gpt-4o-mini",
+// Create chat model with dynamic API key and model
+const createChatModel = (apiKey?: string, model?: string) => new ChatOpenAI({
+  model: model || "gpt-4o-mini",
   temperature: 0.7,
-  openAIApiKey: process.env.OPENAI_API_KEY!,
+  openAIApiKey: apiKey || process.env.OPENAI_API_KEY!,
 });
 
-const streamingChatModel = new ChatOpenAI({
-  model: "gpt-4o-mini",
+const createStreamingChatModel = (apiKey?: string, model?: string) => new ChatOpenAI({
+  model: model || "gpt-4o-mini",
   temperature: 0.7,
   streaming: true,
-  openAIApiKey: process.env.OPENAI_API_KEY!,
+  openAIApiKey: apiKey || process.env.OPENAI_API_KEY!,
 });
 
 /**
@@ -22,6 +22,8 @@ const streamingChatModel = new ChatOpenAI({
 export interface RAGQuery {
   question: string;
   userId: string;
+  apiKey?: string; // User's OpenAI API key
+  model?: string; // OpenAI model to use
   includeMetadata?: boolean;
   maxResults?: number;
   scoreThreshold?: number;
@@ -47,6 +49,8 @@ export interface RAGResponse {
 export async function executeRAGQuery({
   question,
   userId,
+  apiKey,
+  model,
   includeMetadata = true,
   maxResults = 5,
   scoreThreshold = 0.1,
@@ -99,6 +103,7 @@ export async function executeRAGQuery({
       Question: ${question}
           `;
 
+    const chatModel = createChatModel(apiKey, model);
     const response = await chatModel.invoke(SYSTEM_PROMPT);
 
     const sources = relevantDocs.map((doc) => ({
@@ -128,6 +133,8 @@ export async function executeRAGQuery({
 export async function* executeRAGQueryStream({
   question,
   userId,
+  apiKey,
+  model,
   maxResults = 5,
   filter,
 }: Omit<RAGQuery, "includeMetadata" | "scoreThreshold">): AsyncGenerator<
@@ -161,6 +168,7 @@ export async function* executeRAGQueryStream({
 
         Answer:`;
 
+    const streamingChatModel = createStreamingChatModel(apiKey, model);
     const stream = await streamingChatModel.stream(prompt);
 
     for await (const chunk of stream) {

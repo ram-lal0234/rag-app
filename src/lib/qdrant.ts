@@ -39,6 +39,46 @@ export async function initializeCollection() {
       });
       console.log(`Collection ${COLLECTION_NAME} created successfully`);
     }
+
+    // Create indexes for filtering fields
+    try {
+      await qdrantClient.createPayloadIndex(COLLECTION_NAME, {
+        field_name: "metadata.userId",
+        field_schema: "keyword",
+      });
+      console.log("Created index for metadata.userId");
+    } catch (indexError: any) {
+      // Index might already exist, which is fine
+      if (!indexError.message?.includes("already exists")) {
+        console.error("Error creating userId index:", indexError);
+      }
+    }
+
+    try {
+      await qdrantClient.createPayloadIndex(COLLECTION_NAME, {
+        field_name: "metadata.contentType",
+        field_schema: "keyword",
+      });
+      console.log("Created index for metadata.contentType");
+    } catch (indexError: any) {
+      // Index might already exist, which is fine
+      if (!indexError.message?.includes("already exists")) {
+        console.error("Error creating contentType index:", indexError);
+      }
+    }
+
+    try {
+      await qdrantClient.createPayloadIndex(COLLECTION_NAME, {
+        field_name: "metadata.documentId",
+        field_schema: "keyword",
+      });
+      console.log("Created index for metadata.documentId");
+    } catch (indexError: any) {
+      // Index might already exist, which is fine
+      if (!indexError.message?.includes("already exists")) {
+        console.error("Error creating documentId index:", indexError);
+      }
+    }
   } catch (error) {
     console.error("Error initializing collection:", error);
     throw error;
