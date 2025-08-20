@@ -99,13 +99,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       return;
     }
 
-    if (!apiKey.trim()) {
-      setMessage({ type: 'error', text: 'Please enter an API key' });
-      return;
-    }
-
-    // Basic validation for OpenAI API key format
-    if (!apiKey.startsWith('sk-') || apiKey.length < 20) {
+    // API key is now optional - validate format only if provided
+    if (apiKey.trim() && (!apiKey.startsWith('sk-') || apiKey.length < 20)) {
       setMessage({ type: 'error', text: 'Invalid API key format. OpenAI keys start with "sk-"' });
       return;
     }
@@ -113,7 +108,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setIsSaving(true);
     try {
       const settings: UserSettings = {
-        apiKey: apiKey.trim(),
+        apiKey: apiKey.trim(), // Can be empty - will fall back to environment variable
         model: selectedModel
       };
       saveSettingsToStorage(user.id, settings);
@@ -169,7 +164,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           {/* OpenAI API Key Section */}
           <div>
             <label htmlFor="apiKey" className="block text-sm font-medium mb-2">
-              OpenAI API Key
+              OpenAI API Key <span className="text-gray-400 font-normal">(Optional)</span>
             </label>
             <div className="relative">
               <input
@@ -177,7 +172,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 type={showApiKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
+                placeholder="sk-... (optional - will use environment key if not provided)"
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
               />
               <button
@@ -198,7 +193,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </button>
             </div>
             <p className="text-xs text-gray-400 mt-1">
-              Your API key is stored locally and never sent to our servers.{' '}
+              Optional: Your API key is stored locally. If not provided, the app will use the configured environment API key.{' '}
               <a 
                 href="https://platform.openai.com/api-keys" 
                 target="_blank" 

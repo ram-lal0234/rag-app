@@ -124,14 +124,8 @@ export default function ChatPanel() {
       return;
     }
 
-    // Get user settings
+    // Get user settings (API key is now optional - will fall back to environment)
     const userSettings = getUserSettings(user.id);
-    if (!userSettings.apiKey) {
-      setError('Please add your OpenAI API key in settings first');
-      setTimeout(() => setError(null), 5000);
-      setIsSettingsOpen(true);
-      return;
-    }
 
     const userMessage: Message = {
       id: Date.now().toString(),

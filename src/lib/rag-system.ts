@@ -65,11 +65,13 @@ export async function executeRAGQuery({
   maxResults = 3,
   scoreThreshold = 0.7,
 }: RAGQuery): Promise<RAGResponse> {
-  if (!apiKey) {
-    throw new Error("OpenAI API key is required");
+  // Use user's API key or fallback to environment API key
+  const finalApiKey = apiKey || process.env.OPENAI_API_KEY;
+  if (!finalApiKey) {
+    throw new Error("OpenAI API key is required. Please provide an API key or set OPENAI_API_KEY environment variable.");
   }
   try {
-    const vectorStore = await getVectorStore(userId, apiKey);
+    const vectorStore = await getVectorStore(userId, finalApiKey);
 
     const filter = {
       must: [
@@ -130,7 +132,7 @@ export async function executeRAGQuery({
       Question: ${question}
           `;
 
-    const chatModel = createChatModel(apiKey, model);
+    const chatModel = createChatModel(finalApiKey, model);
     const response = await chatModel.invoke(SYSTEM_PROMPT);
 
     // Only include sources if the answer is actually based on the context
@@ -175,11 +177,13 @@ export async function* executeRAGQueryStream({
   void,
   unknown
 > {
-  if (!apiKey) {
-    throw new Error("OpenAI API key is required");
+  // Use user's API key or fallback to environment API key
+  const finalApiKey = apiKey || process.env.OPENAI_API_KEY;
+  if (!finalApiKey) {
+    throw new Error("OpenAI API key is required. Please provide an API key or set OPENAI_API_KEY environment variable.");
   }
   try {
-    const vectorStore = await getVectorStore(userId, apiKey);
+    const vectorStore = await getVectorStore(userId, finalApiKey);
     const retriever = vectorStore.asRetriever({
       k: maxResults,
       filter: filter || undefined, // 👈 pass filter here too
@@ -218,7 +222,7 @@ export async function* executeRAGQueryStream({
 
         Answer:`;
 
-    const streamingChatModel = createStreamingChatModel(apiKey, model);
+    const streamingChatModel = createStreamingChatModel(finalApiKey, model);
     const stream = await streamingChatModel.stream(prompt);
 
     for await (const chunk of stream) {

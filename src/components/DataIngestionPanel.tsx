@@ -40,13 +40,8 @@ export default function DataIngestionPanel({
       return;
     }
 
-    // Check if user has API key
+    // Get user settings (API key is now optional - will fall back to environment)
     const userSettings = getUserSettings(user.id);
-    if (!userSettings.apiKey) {
-      setError("Please add your OpenAI API key in settings first");
-      clearNotifications();
-      return;
-    }
 
     setIsLoading(true);
     setError(null);
@@ -100,16 +95,8 @@ export default function DataIngestionPanel({
       return;
     }
 
-    // Check if user has API key
+    // Get user settings (API key is now optional - will fall back to environment)
     const userSettings = getUserSettings(user.id);
-    if (!userSettings.apiKey) {
-      setError("Please add your OpenAI API key in settings first");
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      clearNotifications();
-      return;
-    }
 
     const file = e.target.files[0];
 
@@ -183,13 +170,8 @@ export default function DataIngestionPanel({
       return;
     }
 
-    // Check if user has API key
+    // Get user settings (API key is now optional - will fall back to environment)
     const userSettings = getUserSettings(user.id);
-    if (!userSettings.apiKey) {
-      setError("Please add your OpenAI API key in settings first");
-      clearNotifications();
-      return;
-    }
 
     setIsLoading(true);
     setError(null);

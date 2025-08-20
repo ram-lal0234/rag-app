@@ -94,11 +94,12 @@ export async function initializeCollection() {
 export async function getVectorStore(userId?: string, apiKey?: string) {
   await initializeCollection();
 
-  // Use user's API key for embeddings - required for operations
-  if (!apiKey) {
-    throw new Error("OpenAI API key is required for vector store operations");
+  // Use user's API key or fallback to environment API key
+  const finalApiKey = apiKey || process.env.OPENAI_API_KEY;
+  if (!finalApiKey) {
+    throw new Error("OpenAI API key is required for vector store operations. Please provide an API key or set OPENAI_API_KEY environment variable.");
   }
-  const userEmbeddings = createEmbeddings(apiKey);
+  const userEmbeddings = createEmbeddings(finalApiKey);
 
   return new QdrantVectorStore(userEmbeddings, {
     client: qdrantClient,
@@ -137,11 +138,12 @@ export async function createVectorStoreFromDocuments(
     },
   }));
 
-  // Use user's API key for embeddings - required
-  if (!apiKey) {
-    throw new Error("OpenAI API key is required for document processing");
+  // Use user's API key or fallback to environment API key
+  const finalApiKey = apiKey || process.env.OPENAI_API_KEY;
+  if (!finalApiKey) {
+    throw new Error("OpenAI API key is required for document processing. Please provide an API key or set OPENAI_API_KEY environment variable.");
   }
-  const userEmbeddings = createEmbeddings(apiKey);
+  const userEmbeddings = createEmbeddings(finalApiKey);
 
   return await QdrantVectorStore.fromDocuments(
     documentsWithUserId,

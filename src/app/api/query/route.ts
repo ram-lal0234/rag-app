@@ -34,9 +34,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!apiKey || typeof apiKey !== 'string') {
+    // API key is now optional - will fall back to environment variable
+    if (apiKey && typeof apiKey !== 'string') {
       return NextResponse.json(
-        { error: 'OpenAI API key is required' },
+        { error: 'API key must be a string if provided' },
         { status: 400 }
       );
     }
