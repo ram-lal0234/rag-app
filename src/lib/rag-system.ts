@@ -4,13 +4,13 @@ import type { Document } from "@langchain/core/documents";
 
 // Models
 const chatModel = new ChatOpenAI({
-  model: "gpt-4",
+  model: "gpt-4o-mini",
   temperature: 0.7,
   openAIApiKey: process.env.OPENAI_API_KEY!,
 });
 
 const streamingChatModel = new ChatOpenAI({
-  model: "gpt-4",
+  model: "gpt-4o-mini",
   temperature: 0.7,
   streaming: true,
   openAIApiKey: process.env.OPENAI_API_KEY!,
