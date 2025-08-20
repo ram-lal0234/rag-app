@@ -152,14 +152,14 @@ export async function* executeRAGQueryStream({
     const context = relevantDocs.map((doc) => doc.pageContent).join("\n\n");
 
     const prompt = `Answer the question using the context below. 
-If you don’t know the answer from context, say "I don’t know."
+        If you don’t know the answer from context, say "I don’t know."
 
-Context:
-${context}
+        Context:
+        ${context}
 
-Question: ${question}
+        Question: ${question}
 
-Answer:`;
+        Answer:`;
 
     const stream = await streamingChatModel.stream(prompt);
 
